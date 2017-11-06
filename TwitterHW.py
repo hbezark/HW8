@@ -1,7 +1,3 @@
-#Name: Hana Bezark
-#Section: Thursday 3-4pm
-#Worked with: Emma Welch
-
 # Import statements
 import unittest
 import sqlite3
@@ -40,15 +36,16 @@ except:
 def get_tweets():
 ##YOUR CODE HERE
     if 'umsi' in CACHE_DICTION:
-        r = CACHE_DICTION['umsi']
+        print('using cached data')
+        twitter_results = CACHE_DICTION['umsi']
     else:
-        r = api.search(q = 'umsi')
-        CACHE_DICTION['umsi'] = r
-        f = open(CACHE_FNAME, 'w')
+        print("getting data from internet")
+        twitter_results = api.user_timeline('umsi')
+        CACHE_DICTION['umsi'] = twitter_results
+        f = open(CACHE_FNAME, "w")
         f.write(json.dumps(CACHE_DICTION))
         f.close()
-    statuses = r['statuses']
-    return statuses
+    return twitter_results
 
 
 
@@ -70,23 +67,15 @@ cur = conn.cursor()
 # 2 - Write code to drop the Tweets table if it exists, and create the table (so you can run the program over and over), with the correct (4) column names and appropriate types for each.
 # HINT: Remember that the time_posted column should be the TIMESTAMP data type!
 cur.execute('DROP TABLE IF EXISTS Tweets')
-cur.execute('CREATE TABLE Tweets (tweet_id TEXT, author TEXT, time_posted TIMESTAMP, tweet_text TEXT, retweets INTEGER)')
+cur.execute('CREATE TABLE Tweets (tweet_id TEXT, author TEXT, time_posted TIMESTAMP, tweet_text TEXT, retweets NUMBER)')
 
 # 3 - Invoke the function you defined above to get a list that represents a bunch of tweets from the UMSI timeline. Save those tweets in a variable called umsi_tweets.
 umsi_tweets = get_tweets()
 
 # 4 - Use a for loop, the cursor you defined above to execute INSERT statements, that insert the data from each of the tweets in umsi_tweets into the correct columns in each row of the Tweets database table.
-#for tw in umsi_tweets:
-    #tup = tw["id"], tw["user"]["screen_name"], tw["created_at"], tw["text"], tw["retweet_count"]
-    #cur.execute('INSERT INTO Tweets (tweet_id, author, time_posted, tweet_text, retweets)')
-for tweet in umsi_tweets:
-    a = tweet["id"]
-    b = tweet["user"]["screen_name"]
-    c = tweet["created_at"]
-    d = tweet["text"]
-    e = tweet["retweet_count"]
-    cur.execute('''INSERT INTO Tweets (tweet_id, author, time_posted, tweet_text, retweets)
-        VALUES (?, ?, ?, ?, ?) ''', (a, b, c, d, e))
+for tw in umsi_tweets:
+    tup = tw['id'], tw['user']['screen_name'], tw['created_at'], tw['text'], tw['retweet_count']
+    cur.execute('INSERT INTO Tweets (tweet_id, author, time_posted, tweet_text, retweets) VALUES (?, ?, ?, ?, ?)', tup)
 
 #  5- Use the database connection to commit the changes to the database
 conn.commit()
@@ -100,33 +89,19 @@ conn.commit()
     # Mon Oct 09 15:45:45 +0000 2017 - RT @MikeRothCom: Beautiful morning at @UMich - It’s easy to forget to
     # take in the view while running from place to place @umichDLHS  @umich…
 # Include the blank line between each tweet.
-sqlstr = 'SELECT tweet_id, author, time_posted, tweet_text, retweets FROM Tweets'
-
-for row in cur.execute(sqlstr):
-    print(str(row[2]) + " - " + str(row)[3] + "\n")
+cur.execute('SELECT time_posted, tweet_text FROM Tweets')
+all_res = cur.fetchall()
+for t in all_res:
+    print(t[0] + " - " + t[1]+"\n")
 
 # Select the author of all of the tweets (the full rows/tuples of information) that have been retweeted MORE
 # than 2 times, and fetch them into the variable more_than_2_rts.
 # Print the results
-#print ('tests for part 2')
-
-#cur.execute("SELECT time_posted, tweet_text FROM Tweets")
-#all_res = cur.fetchall()
-#for t in all_res:
-    #print (t[0] + " - " + t[1]+"\n")
-
-#cur.execute("SELECT author FROM Tweets WHERE retweets > 2")
-#more_than_2_rts = cur.fetchall()
-#print("more_than_2_rts - %" % set(more_than_2_rts))
-more_than_2_rts = []
-for row in cur.execute(sqlstr):
-    if row[4]>2:
-        more_than_2_rts.append(row[1])
-
-print (more_than_2_rts)
+cur.execute('SELECT author FROM Tweets WHERE retweets > 2')
+more_than_2_rts = cur.fetchall()
+print('more_than_2_rts - %s' % set(more_than_2_rts))
 
 cur.close()
-
 
 
 
